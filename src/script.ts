@@ -255,6 +255,36 @@ async function mergeExcelFiles(): Promise<void> {
     });
   }
 
+  // Ensure column T style matches others (clone from S if available)
+  const cloneColumnStyle = (refCol: number, dstCol: number) => {
+    if (refCol <= 0 || dstCol <= 0 || refCol === dstCol) return;
+    const refColumn = outSheet.getColumn(refCol);
+    const dstColumn = outSheet.getColumn(dstCol);
+    if (refColumn && typeof refColumn.width === 'number') {
+      dstColumn.width = refColumn.width;
+    }
+    const maxRows = Math.max(outSheet.rowCount, baseSheet.rowCount);
+    for (let r = 1; r <= maxRows; r++) {
+      const fromCell = outSheet.getRow(r).getCell(refCol) as any;
+      const toCell = outSheet.getRow(r).getCell(dstCol) as any;
+      if (fromCell && fromCell.style) {
+        // Deep clone to avoid shared references
+        toCell.style = JSON.parse(JSON.stringify(fromCell.style));
+      }
+    }
+  };
+  // Prefer S as the style source; fall back to R, then Q
+  if (S > 0) {
+    cloneColumnStyle(S, T);
+    console.log(`Aligned column ${colToLetter(T)} style/width to match ${colToLetter(S)}`);
+  } else if (R > 0) {
+    cloneColumnStyle(R, T);
+    console.log(`Aligned column ${colToLetter(T)} style/width to match ${colToLetter(R)}`);
+  } else if (Q > 0) {
+    cloneColumnStyle(Q, T);
+    console.log(`Aligned column ${colToLetter(T)} style/width to match ${colToLetter(Q)}`);
+  }
+
   // Fill salary values using CIN from BASE rows
   let matchCount = 0;
   let mismatchCount = 0;
